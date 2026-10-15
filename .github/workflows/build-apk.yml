@@ -38,14 +38,22 @@ jobs:
 
       - name: Icono de la app
         run: |
-          R=android/app/src/main/res
-          for d in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432; do
-            IFS=: read n l f <<< "$d"
-            convert icon-512.png -resize ${l}x${l} $R/mipmap-$n/ic_launcher.png || true
-            convert icon-512.png -resize ${l}x${l} $R/mipmap-$n/ic_launcher_round.png || true
-            convert icon-512.png -resize ${f}x${f} $R/mipmap-$n/ic_launcher_foreground.png || true
-          done
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#000000</color>\n</resources>\n' > $R/values/ic_launcher_background.xml
+          pip install pillow --break-system-packages || pip install pillow
+          python3 - <<'PY'
+          from PIL import Image
+          import os
+          R = 'android/app/src/main/res'
+          src = Image.open('icon-512.png').convert('RGBA')
+          sizes = {'mdpi': (48, 108), 'hdpi': (72, 162), 'xhdpi': (96, 216), 'xxhdpi': (144, 324), 'xxxhdpi': (192, 432)}
+          for d, (l, f) in sizes.items():
+              p = f'{R}/mipmap-{d}'
+              os.makedirs(p, exist_ok=True)
+              src.resize((l, l), Image.LANCZOS).save(f'{p}/ic_launcher.png')
+              src.resize((l, l), Image.LANCZOS).save(f'{p}/ic_launcher_round.png')
+              src.resize((f, f), Image.LANCZOS).save(f'{p}/ic_launcher_foreground.png')
+          os.makedirs(f'{R}/values', exist_ok=True)
+          open(f'{R}/values/ic_launcher_background.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#000000</color>\n</resources>\n')
+          PY
 
       - name: Compilar APK
         working-directory: android
